@@ -2,16 +2,21 @@
 
 # Form implementation generated from reading ui file 'C:\Users\Fritzi\Dropbox\VU Computational Techniques\Teil2\tsp.ui'
 #
-# Created by: PyQt4 UI code generator 4.11.4
+# Partly created by: PyQt4 UI code generator 4.11.4
 #
 # WARNING! All changes made in this file will be lost!
 
 import sys
+import os
 from PyQt4 import QtCore, QtGui
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import networkx as nx
 
 from tsp_worker import Problem
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+PROBLEMS_DIR = os.path.join(ROOT_DIR, 'problems')
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -34,7 +39,7 @@ class Ui_Tsp(QtGui.QWidget):
 
     def setupUi(self, TSP):
         TSP.setObjectName(_fromUtf8("TSP"))
-        TSP.resize(771, 356)
+        TSP.resize(1000, 700)
         self.verticalLayout_3 = QtGui.QVBoxLayout(TSP)
         self.verticalLayout_3.setMargin(5)
         self.verticalLayout_3.setSpacing(5)
@@ -92,6 +97,11 @@ class Ui_Tsp(QtGui.QWidget):
         sizePolicy.setHeightForWidth(self.widget_2.sizePolicy().hasHeightForWidth())
         self.widget_2.setSizePolicy(sizePolicy)
         self.widget_2.setObjectName(_fromUtf8("widget_2"))
+        self.verticalLayout = QtGui.QVBoxLayout(self.widget_2)
+        self.verticalLayout.setObjectName(_fromUtf8("verticalLayout"))
+        self.figure = plt.figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.verticalLayout.addWidget(self.canvas)
         self.verticalLayout_2.addWidget(self.widget_2)
         self.verticalLayout_3.addLayout(self.verticalLayout_2)
 
@@ -99,23 +109,53 @@ class Ui_Tsp(QtGui.QWidget):
         QtCore.QMetaObject.connectSlotsByName(TSP)
 
     def retranslateUi(self, TSP):
-        TSP.setWindowTitle(_translate("TSP", "Form", None))
+        TSP.setWindowTitle(_translate("TSP", "Python TSP Heuristic", None))
         self.commentLabel.setText(_translate("TSP", "TextLabel", None))
         self.dimensionLabel.setText(_translate("TSP", "TextLabel", None))
+        self.resultLabel.setText(_translate("TSP", "Result...", None))
         self.runTsp_btn.setText(_translate("TSP", "Run!", None))
+
+        for problem in collect_problems():
+            self.fileComboBox.addItem(_fromUtf8(problem))
+        self.problem_changed()
+
         self.runTsp_btn.clicked.connect(self.run_tsp)
-        self.resultLabel.setText(_translate("TSP", "TextLabel", None))
+        self.fileComboBox.currentIndexChanged.connect(self.problem_changed)
+
+    def problem_changed(self):
+        problem = self.fileComboBox.currentText()
+        file_path = os.path.join(PROBLEMS_DIR, str(problem))
+        self.problem = Problem(file_path)
+        self.commentLabel.setText("Comment: " + self.problem.meta['comment'])
+        self.dimensionLabel.setText("Nodes: " + self.problem.meta['dimension'])
 
     def run_tsp(self):
-        file_path = "../problems/berlin52.tsp"
+        calc_matrix = self.problem.calc_dist_matrix()
+        tsp_solution = self.problem.solve_tsp()
+        self.draw_solution(tsp_solution)
 
-        problem = Problem(file_path)
+    def draw_solution(self, tsp_solution):
+        ax = self.figure.add_subplot(111)
+        ax.hold(False)
 
-        calc_matrix = problem.calc_dist_matrix()
+        G = nx.DiGraph()
+        G.add_nodes_from(range(0, len(self.problem.data)))
+        G.add_edges_from(tsp_solution)
+        nx.draw_networkx_nodes(G, self.problem.data, node_size=20, node_color='k')
+        nx.draw_networkx_edges(G, self.problem.data, width=0.5, arrows=True, edge_color='r')
 
-        for row in calc_matrix:
-            print row
-            print '\t'.join([str(cell) for cell in row])
+        plt.xlim(0)
+        plt.ylim(0)
+        plt.xlabel('X-Axis')
+        plt.ylabel('Y-Axis')
+        self.canvas.draw()
+
+
+def collect_problems():
+    for file in os.listdir(PROBLEMS_DIR):
+        if file.endswith('.tsp'):
+            yield file
+
 
 if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)

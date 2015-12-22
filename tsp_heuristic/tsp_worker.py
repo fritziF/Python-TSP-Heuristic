@@ -1,8 +1,7 @@
 import re
 from collections import OrderedDict
 import numpy
-import matplotlib.pyplot as plt
-import networkx as nx
+
 
 NUMPY_PRECISION = 2
 #numpy.set_printoptions(precision=NUMPY_PRECISION)
@@ -29,14 +28,16 @@ class Problem:
             self.meta[match.group(1).strip()] = match.group(2).strip()
 
     def read_data(self, file_content):
-        data_reg = re.compile(r".* (.*) (.*)")
+        data_reg = re.compile(r"\s*\d+\s*([\d.]+)?\s*([\d.]+)?")
         for line in file_content[6:]:
             if "EOF" in line or not line.strip():
                 break
             match = re.match(data_reg, line.strip())
-            self.data.append((float(match.group(1)), float(match.group(2))))
+            self.data.append((float(match.group(1).strip()),
+                              float(match.group(2).strip())))
 
     def set_max_values(self):
+        """this was intended for normalizing graph, but not needed"""
         self.max_x = max([x for x, y in self.data])
         self.max_y = max([y for x, y in self.data])
 
@@ -44,31 +45,14 @@ class Problem:
         z = numpy.array([[complex(x, y) for x, y in self.data]])
         return numpy.round(abs(z.T-z), NUMPY_PRECISION)
 
+    def solve_tsp(self):
+        #dummy tsp for graph
+        dummy = [(i, i+1) for i in range(0, len(self.data) - 1)]
+        dummy.append((len(self.data) - 1, 0))
+        return dummy
+
+
     def __str__(self):
         return '\n'.join([' : '.join((k, str(self.meta[k]))) for k in self.problem])
-
-
-if __name__ == "__main__":
-    file_path = "../problems/berlin52.tsp"
-
-    problem = Problem(file_path)
-
-    calc_matrix = problem.calc_dist_matrix()
-
-    G = nx.DiGraph()
-    G.add_nodes_from(range(0, len(problem.data)))
-    G.add_edges_from([(0, 6), (6, 20), (20, 0)])
-    nx.draw_networkx_nodes(G, problem.data, node_size=20, node_color='k')
-    nx.draw_networkx_edges(G, problem.data, width=0.5, arrows=True, edge_color='r')
-
-
-    #plt.scatter(*zip(*problem.data), s=10)
-    #plt.plot(*zip(*problem.data), color='#bebfcc', linewidth=0.5)
-    plt.title(problem.meta['name'])
-    plt.xlim(0)
-    plt.ylim(0)
-    plt.xlabel('X-Axis')
-    plt.ylabel('Y-Axis')
-    plt.show()
 
 
