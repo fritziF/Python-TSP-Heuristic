@@ -245,6 +245,7 @@ class Ui_Tsp(QtGui.QWidget):
                 self.problem = Problem(file_path)
                 self.commentText.setText(self.problem.meta['comment'])
                 self.dimensionText.setText(self.problem.meta['dimension'])
+                self.infoText.setText("ready...")
             except Exception as e:
                 print e
                 self.commentText.setText("Error")
