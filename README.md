@@ -1,6 +1,11 @@
 # Python-TSP-Heuristic
 
-CT Project
+* CT Project
+* Traveling Salesman Problem - Heuristic
+* PyQt4 GUI with visualization (matplotlib)
+* Solver runs in QThread
+* Code for GUI-Elements was generated with PyQt4 UI code generator
+* Python 2.7.10
 
 Example of GUI with a dummy solution [(0, 1), (1, 2), ...]
 
