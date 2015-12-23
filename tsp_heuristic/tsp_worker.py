@@ -58,6 +58,7 @@ class Problem(QThread):
         unvisited = range(1, len(self.data))
         current_node = 0
         trip = []
+        distance_list = []
         self.iterations += 1
 
         while unvisited:
@@ -65,18 +66,20 @@ class Problem(QThread):
             next_node = unvisited[min_unvisited]
             unvisited.remove(next_node)
             trip.append((current_node, next_node))
+            distance_list.append(distance_matrix[current_node, next_node])
             current_node = next_node
 
         trip.append((current_node, 0))
-
-        return trip
+        distance_list.append(distance_matrix[current_node, 0])
+        return trip, distance_list
 
     def run(self):
         dist_matrix = self.calc_dist_matrix()
 
         start = datetime.now()
-        self.tsp_solution = self.greedy_tsp(dist_matrix)
-        self.runtime = str(datetime.now() - start)
+        self.tsp_solution, distance_list = self.greedy_tsp(dist_matrix)
+        self.trip_distance = sum(distance_list)
+        self.runtime = datetime.now() - start
 
 
     def __str__(self):

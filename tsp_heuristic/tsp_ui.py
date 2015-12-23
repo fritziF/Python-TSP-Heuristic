@@ -264,10 +264,10 @@ class Ui_Tsp(QtGui.QWidget):
         self.problem.start()
 
     def done(self):
-        self.runtimeText.setText(self.problem.runtime)
+        self.runtimeText.setText(str(self.problem.runtime))
         self.iterText.setText(str(self.problem.iterations))
+        self.infoText.setText("Trip-Distance: " + str(self.problem.trip_distance))
         self.draw_solution(self.problem.tsp_solution)
-        self.infoText.setText("Done.")
 
     def draw_solution(self, tsp_solution):
         ax = self.figure.add_subplot(111)
