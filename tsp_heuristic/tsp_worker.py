@@ -51,9 +51,6 @@ class Problem:
     def solve_tsp(self, dist_matrix):
         start = datetime.now()
         solution = self.greedy_tsp(dist_matrix)
-        #dummy tsp for graph
-        #dummy = [(i, i+1) for i in range(0, len(self.data) - 1)]
-        #dummy.append((len(self.data) - 1, 0))
         self.runtime = datetime.now() - start
         return solution
 
