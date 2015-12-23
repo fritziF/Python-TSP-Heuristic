@@ -10,3 +10,7 @@
 Example of GUI with a greedy tsp.
 
 ![alt tag](https://github.com/fritziF/Python-TSP-Heuristic/blob/master/gui_greedy-tsp.PNG)
+
+# Source of Problems
+
+![alt tag](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/)
