@@ -112,7 +112,7 @@ class Ui_Tsp(QtGui.QWidget):
         TSP.setWindowTitle(_translate("TSP", "Python TSP Heuristic", None))
         self.commentLabel.setText(_translate("TSP", "TextLabel", None))
         self.dimensionLabel.setText(_translate("TSP", "TextLabel", None))
-        self.resultLabel.setText(_translate("TSP", "Result...", None))
+        self.resultLabel.setText(_translate("TSP", "Runtime:     Iterations: ", None))
         self.runTsp_btn.setText(_translate("TSP", "Run!", None))
 
         for problem in collect_problems():
@@ -130,8 +130,10 @@ class Ui_Tsp(QtGui.QWidget):
         self.dimensionLabel.setText("Nodes: " + self.problem.meta['dimension'])
 
     def run_tsp(self):
-        calc_matrix = self.problem.calc_dist_matrix()
-        tsp_solution = self.problem.solve_tsp()
+        dist_matrix = self.problem.calc_dist_matrix()
+        tsp_solution = self.problem.solve_tsp(dist_matrix)
+        self.resultLabel.setText("Runtime: {0}    Iterations: {1}".format(
+                self.problem.runtime, self.problem.iterations))
         self.draw_solution(tsp_solution)
 
     def draw_solution(self, tsp_solution):

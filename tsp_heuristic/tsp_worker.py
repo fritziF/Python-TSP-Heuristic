@@ -1,7 +1,7 @@
 import re
 from collections import OrderedDict
 import numpy
-
+from datetime import datetime, timedelta
 
 NUMPY_PRECISION = 2
 #numpy.set_printoptions(precision=NUMPY_PRECISION)
@@ -13,6 +13,9 @@ class Problem:
         self.data = []
         self.max_x = None
         self.max_y = None
+
+        self.iterations = 0
+        self.runtime = None
 
         with open(file_path, 'r') as f:
             file_content = f.readlines()
@@ -45,11 +48,31 @@ class Problem:
         z = numpy.array([[complex(x, y) for x, y in self.data]])
         return numpy.round(abs(z.T-z), NUMPY_PRECISION)
 
-    def solve_tsp(self):
+    def solve_tsp(self, dist_matrix):
+        start = datetime.now()
+        solution = self.greedy_tsp(dist_matrix)
         #dummy tsp for graph
-        dummy = [(i, i+1) for i in range(0, len(self.data) - 1)]
-        dummy.append((len(self.data) - 1, 0))
-        return dummy
+        #dummy = [(i, i+1) for i in range(0, len(self.data) - 1)]
+        #dummy.append((len(self.data) - 1, 0))
+        self.runtime = datetime.now() - start
+        return solution
+
+    def greedy_tsp(self, distance_matrix):
+        unvisited = range(1, len(self.data))
+        current_node = 0
+        trip = []
+        self.iterations += 1
+
+        while unvisited:
+            min_unvisited = numpy.argmin([distance_matrix[current_node][i] for i in unvisited])
+            next_node = unvisited[min_unvisited]
+            unvisited.remove(next_node)
+            trip.append((current_node, next_node))
+            current_node = next_node
+
+        trip.append((current_node, 0))
+
+        return trip
 
 
     def __str__(self):
