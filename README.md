@@ -13,4 +13,4 @@ Example of GUI with a greedy tsp.
 
 # Source of Problems
 
-![alt tag](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/)
+http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/
