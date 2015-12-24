@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import os
 import re
+import logging
 from collections import OrderedDict
 import numpy
 from datetime import datetime
@@ -9,6 +11,18 @@ from PyQt4.QtCore import QThread, SIGNAL
 
 NUMPY_PRECISION = 2
 numpy.set_printoptions(precision=NUMPY_PRECISION)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+
+def set_logging_file(problem):
+    logfile = os.path.join(ROOT_DIR, 'log', problem + '.csv')
+    if not os.path.isfile(logfile):
+        with open(logfile, 'w') as f:
+            f.write("timestamp;runtime;iterations;best-iteration;trip-distance;figure\n")
+    logging.basicConfig(filename=logfile, filemode='a',
+                        format='%(asctime)s;%(message)s',
+                        datefmt='%H:%M:%S',
+                        level=logging.DEBUG)
 
 
 class Problem(QThread):
@@ -17,6 +31,7 @@ class Problem(QThread):
         self.meta = OrderedDict()
         self.data = []
 
+        self.dist_matrix = None
         self.iterations = 0
         self.runtime = ""
         self.tsp_solution = None
@@ -26,6 +41,8 @@ class Problem(QThread):
 
         self.read_meta(file_content)
         self.read_data(file_content)
+
+        set_logging_file(self.meta['name'])
 
     def read_meta(self, file_content):
         meta_reg = re.compile(r"(.*):(.*)")
@@ -48,9 +65,7 @@ class Problem(QThread):
 
     def solve_tsp(self, dist_matrix):
 
-
         solution = self.greedy_tsp(dist_matrix)
-
 
         return solution
 
@@ -74,13 +89,27 @@ class Problem(QThread):
         return trip, distance_list
 
     def run(self):
-        dist_matrix = self.calc_dist_matrix()
+        self.iterations = 0
+        if not numpy.any(self.dist_matrix):
+            self.dist_matrix = self.calc_dist_matrix()
 
         start = datetime.now()
-        self.tsp_solution, distance_list = self.greedy_tsp(dist_matrix)
+        self.tsp_solution, distance_list = self.greedy_tsp(self.dist_matrix)
         self.trip_distance = sum(distance_list)
         self.runtime = datetime.now() - start
+        self.img = os.path.join(ROOT_DIR,
+                                'log',
+                                'figures',
+                                self.meta['name'] + '_' + start.strftime("%m%d%H%M%S") + '.png')
 
+        self.log_run()
+
+    def log_run(self):
+        logging.info(";".join([str(self.runtime),
+                               str(self.iterations),
+                               "0",
+                               str(self.trip_distance),
+                               os.path.basename(self.img)]))
 
     def __str__(self):
         return '\n'.join([' : '.join((k, str(self.meta[k]))) for k in self.problem])

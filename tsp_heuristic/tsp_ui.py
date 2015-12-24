@@ -284,6 +284,7 @@ class Ui_Tsp(QtGui.QWidget):
         plt.ylim(0)
         plt.xlabel('X-Axis')
         plt.ylabel('Y-Axis')
+        plt.savefig(self.problem.img)
         self.canvas.draw()
 
 
