@@ -2,27 +2,14 @@
 
 import os
 import re
-import logging
 from collections import OrderedDict
 import numpy
 from datetime import datetime
 from PyQt4.QtCore import QThread, SIGNAL
 
-
 NUMPY_PRECISION = 2
 numpy.set_printoptions(precision=NUMPY_PRECISION)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
-
-def set_logging_file(problem):
-    logfile = os.path.join(ROOT_DIR, 'log', problem + '.csv')
-    if not os.path.isfile(logfile):
-        with open(logfile, 'w') as f:
-            f.write("timestamp;runtime;iterations;best-iteration;trip-distance;figure\n")
-    logging.basicConfig(filename=logfile, filemode='a',
-                        format='%(asctime)s;%(message)s',
-                        datefmt='%H:%M:%S',
-                        level=logging.DEBUG)
 
 
 class Problem(QThread):
@@ -42,7 +29,10 @@ class Problem(QThread):
         self.read_meta(file_content)
         self.read_data(file_content)
 
-        set_logging_file(self.meta['name'])
+        self.logfile = os.path.join(ROOT_DIR, 'log', self.meta['name'] + '.csv')
+        if not os.path.isfile(self.logfile):
+            with open(self.logfile, 'w') as f:
+                f.write("timestamp;runtime;iterations;best-iteration;trip-distance;figure\n")
 
     def read_meta(self, file_content):
         meta_reg = re.compile(r"(.*):(.*)")
@@ -61,7 +51,7 @@ class Problem(QThread):
 
     def calc_dist_matrix(self):
         z = numpy.array([[complex(x, y) for x, y in self.data]])
-        return numpy.round(abs(z.T-z), NUMPY_PRECISION)
+        return numpy.round(abs(z.T - z), NUMPY_PRECISION)
 
     def solve_tsp(self, dist_matrix):
 
@@ -97,21 +87,19 @@ class Problem(QThread):
         self.tsp_solution, distance_list = self.greedy_tsp(self.dist_matrix)
         self.trip_distance = sum(distance_list)
         self.runtime = datetime.now() - start
-        self.img = os.path.join(ROOT_DIR,
-                                'log',
-                                'figures',
-                                self.meta['name'] + '_' + start.strftime("%m%d%H%M%S") + '.png')
+        self.img = os.path.join(ROOT_DIR, 'log', 'figures', "{0}_{1}_{2}.png".format(
+                self.meta['name'], str(self.iterations), str(self.trip_distance)))
 
-        self.log_run()
+        self.log_run(start)
 
-    def log_run(self):
-        logging.info(";".join([str(self.runtime),
-                               str(self.iterations),
-                               "0",
-                               str(self.trip_distance),
-                               os.path.basename(self.img)]))
+    def log_run(self, start):
+        with open(self.logfile, 'a') as f:
+            f.write(";".join([str(start),
+                              str(self.runtime),
+                              str(self.iterations),
+                              "0",
+                              str(self.trip_distance),
+                              os.path.basename(self.img)]) + '\n')
 
     def __str__(self):
         return '\n'.join([' : '.join((k, str(self.meta[k]))) for k in self.problem])
-
-
