@@ -21,7 +21,8 @@ class Problem(QThread):
         self.dist_matrix = None
         self.iterations = 0
         self.runtime = ""
-        self.tsp_solution = None
+        self.solutions = []
+        self.best_solution = None
 
         with open(file_path, 'r') as f:
             file_content = f.readlines()
@@ -34,6 +35,13 @@ class Problem(QThread):
             with open(self.logfile, 'w') as f:
                 f.write("timestamp;runtime;iterations;best-iteration;trip-distance;figure\n")
 
+    def reset(self):
+        self.iterations = 0
+        self.runtime = ""
+        self.solutions = []
+        self.best_solution = None
+        self.best_iteration = 0
+
     def read_meta(self, file_content):
         meta_reg = re.compile(r"(.*):(.*)")
         for line in file_content[:5]:
@@ -41,7 +49,7 @@ class Problem(QThread):
             self.meta[match.group(1).strip()] = match.group(2).strip()
 
     def read_data(self, file_content):
-        data_reg = re.compile(r"\s*\d+\s*([\d.]+)?\s*([\d.]+)?")
+        data_reg = re.compile(r"\s*\d+\s*([\d.e\+]+)?\s*([\d.]+)?")
         for line in file_content[6:]:
             if "EOF" in line or not line.strip():
                 break
@@ -53,18 +61,11 @@ class Problem(QThread):
         z = numpy.array([[complex(x, y) for x, y in self.data]])
         return numpy.round(abs(z.T - z), NUMPY_PRECISION)
 
-    def solve_tsp(self, dist_matrix):
-
-        solution = self.greedy_tsp(dist_matrix)
-
-        return solution
-
     def greedy_tsp(self, distance_matrix):
         unvisited = range(1, len(self.data))
         current_node = 0
         trip = []
         distance_list = []
-        self.iterations += 1
 
         while unvisited:
             min_unvisited = numpy.argmin([distance_matrix[current_node][i] for i in unvisited])
@@ -79,17 +80,41 @@ class Problem(QThread):
         return trip, distance_list
 
     def run(self):
-        self.iterations = 0
         if not numpy.any(self.dist_matrix):
             self.dist_matrix = self.calc_dist_matrix()
 
+        self.reset()
         start = datetime.now()
-        self.tsp_solution, distance_list = self.greedy_tsp(self.dist_matrix)
-        self.trip_distance = sum(distance_list)
-        self.runtime = datetime.now() - start
-        self.img = os.path.join(ROOT_DIR, 'log', 'figures', "{0}_{1}_{2}.png".format(
-                self.meta['name'], str(self.iterations), str(self.trip_distance)))
+        best_trip_distance = 0
 
+        # loop goes here :)
+
+        solution, distance_list = self.greedy_tsp(self.dist_matrix)
+        trip_distance = sum(distance_list)
+        iteration = self.iterations
+        self.solutions.append((trip_distance, solution))
+
+        if self.iterations == 0:
+            best_solution = solution
+            best_trip_distance = trip_distance
+            best_iteration = iteration
+        elif trip_distance < best_trip_distance:
+            best_solution = solution
+            best_trip_distance = trip_distance
+            best_iteration = iteration
+
+        self.iterations += 1
+
+        # loop ends here :)
+
+
+        self.best_solution = best_solution
+        self.best_iteration = best_iteration
+        self.trip_distance = best_trip_distance
+        self.runtime = datetime.now() - start
+
+        self.img = os.path.join(ROOT_DIR, 'log', 'figures', "{0}_{1}_{2}.png".format(
+                self.meta['name'], str(self.best_iteration + 1), str(self.trip_distance)))
         self.log_run(start)
 
     def log_run(self, start):
@@ -97,7 +122,7 @@ class Problem(QThread):
             f.write(";".join([str(start),
                               str(self.runtime),
                               str(self.iterations),
-                              "0",
+                              str(self.best_iteration),
                               str(self.trip_distance),
                               os.path.basename(self.img)]) + '\n')
 

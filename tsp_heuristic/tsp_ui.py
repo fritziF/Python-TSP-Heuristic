@@ -209,10 +209,28 @@ class Ui_Tsp(QtGui.QWidget):
         self.widget_2.setSizePolicy(sizePolicy)
         self.widget_2.setObjectName(_fromUtf8("widget_2"))
         self.verticalLayout = QtGui.QVBoxLayout(self.widget_2)
+        self.verticalLayout.setMargin(5)
         self.verticalLayout.setObjectName(_fromUtf8("verticalLayout"))
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.horizontalLayout_2.setSpacing(5)
+        self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(5)
+        sizePolicy.setVerticalStretch(0)
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
-        self.verticalLayout.addWidget(self.canvas)
+        self.canvas.setSizePolicy(sizePolicy)
+        self.horizontalLayout_2.addWidget(self.canvas)
+        self.solutionList = QtGui.QListWidget(self.widget_2)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.solutionList.sizePolicy().hasHeightForWidth())
+        self.solutionList.setSizePolicy(sizePolicy)
+        self.solutionList.setEditTriggers(QtGui.QAbstractItemView.DoubleClicked | QtGui.QAbstractItemView.SelectedClicked)
+        self.solutionList.setObjectName(_fromUtf8("listWidget"))
+        self.horizontalLayout_2.addWidget(self.solutionList)
+        self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.verticalLayout_2.addWidget(self.widget_2)
         self.verticalLayout_3.addLayout(self.verticalLayout_2)
 
@@ -234,6 +252,7 @@ class Ui_Tsp(QtGui.QWidget):
 
         self.runTsp_btn.clicked.connect(self.run_tsp)
         self.fileComboBox.currentIndexChanged.connect(self.problem_changed)
+        self.solutionList.currentItemChanged.connect(self.solution_changed)
 
     def problem_changed(self):
         if self.problem and self.problem.isRunning():
@@ -243,6 +262,7 @@ class Ui_Tsp(QtGui.QWidget):
             file_path = os.path.join(PROBLEMS_DIR, str(problem))
             try:
                 self.problem = Problem(file_path)
+                self.connect(self.problem, SIGNAL("finished()"), self.done)
                 self.commentText.setText(self.problem.meta['comment'])
                 self.dimensionText.setText(self.problem.meta['dimension'])
                 self.infoText.setText("ready...")
@@ -252,6 +272,14 @@ class Ui_Tsp(QtGui.QWidget):
                 self.dimensionText.setText("Error")
                 self.infoText.setText("Error while reading problem.")
 
+    def solution_changed(self):
+        if self.problem and self.problem.isRunning():
+                QtGui.QMessageBox.information(self, "Warning!", "Solver is still running!", QtGui.QMessageBox.Ok)
+        selected = self.solutionList.currentIndex().row()
+        if selected < len(self.problem.solutions):
+            _, solution = self.problem.solutions[selected]
+            self.draw_solution(solution)
+
     def run_tsp(self):
         self.infoText.setText("Solving TSP '{0}'...".format(self.problem.meta['name']))
         self.infoText.repaint()
@@ -259,15 +287,14 @@ class Ui_Tsp(QtGui.QWidget):
         self.iterText.repaint()
         self.runtimeText.setText("")
         self.runtimeText.repaint()
-
-        self.connect(self.problem, SIGNAL("finished()"), self.done)
         self.problem.start()
 
     def done(self):
         self.runtimeText.setText(str(self.problem.runtime))
         self.iterText.setText(str(self.problem.iterations))
         self.infoText.setText("Trip-Distance: " + str(self.problem.trip_distance))
-        self.draw_solution(self.problem.tsp_solution)
+        self.write_list(self.problem.solutions)
+        self.draw_solution(self.problem.best_solution)
 
     def draw_solution(self, tsp_solution):
         ax = self.figure.add_subplot(111)
@@ -279,6 +306,7 @@ class Ui_Tsp(QtGui.QWidget):
         nx.draw_networkx_nodes(G, self.problem.data, node_size=20, node_color='k')
         nx.draw_networkx_edges(G, self.problem.data, width=0.5, arrows=True, edge_color='r')
 
+        self.figure.tight_layout(pad=1.2)
         plt.title(self.problem.meta['name'])
         plt.xlim(0)
         plt.ylim(0)
@@ -286,6 +314,31 @@ class Ui_Tsp(QtGui.QWidget):
         plt.ylabel('Y-Axis')
         plt.savefig(self.problem.img)
         self.canvas.draw()
+
+    def write_list(self, solutions):
+        self.solutionList.clear()
+        gold = QtGui.QBrush(QtGui.QColor(255, 191, 0))
+        gold.setStyle(QtCore.Qt.SolidPattern)
+        red = QtGui.QBrush(QtGui.QColor(255, 0, 0))
+        red.setStyle(QtCore.Qt.SolidPattern)
+        green = QtGui.QBrush(QtGui.QColor(85, 255, 0))
+        green.setStyle(QtCore.Qt.SolidPattern)
+
+        for i in range(0, len(solutions)):
+            item = QtGui.QListWidgetItem()
+            distance, _ = solutions[i]
+            item.setText("{0}:  {1}".format(str(i+1), str(distance)))
+            if i > 0:
+                if distance == self.problem.best_solution:
+                    item.setBackground(gold)
+                else:
+                    prev_distance, _ = solutions[i-1]
+                    if prev_distance > distance:
+                        item.setBackground(red)
+                    if prev_distance < distance:
+                        item.setBackground(green)
+
+            self.solutionList.addItem(item)
 
 
 def collect_problems():
