@@ -8,8 +8,7 @@
 * Code for GUI-Elements was generated with PyQt4 UI code generator
 * Python 2.7.10
 
-Example of GUI with a greedy tsp.
-
+GUI:
 ![alt tag](https://github.com/fritziF/Python-TSP-Heuristic/blob/master/gui_tsp-ILS.PNG)
 
 # Source of Problems

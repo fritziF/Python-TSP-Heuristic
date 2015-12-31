@@ -101,7 +101,7 @@ class Problem(QThread):
                               str(self.best_solution['distance']),
                               os.path.basename(self.img)]) + '\n')
 
-    def iterated_local_search(self, iteration_limit=2000, idle_limit=50):
+    def iterated_local_search(self, iteration_limit=1500, idle_limit=50):
         solution = {'trip': [], 'distance': 0, 'iteration': 0}
         #initial solution starting at 0
         solution['trip'].append(0)
