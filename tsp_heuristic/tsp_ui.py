@@ -277,7 +277,7 @@ class Ui_Tsp(QtGui.QWidget):
                 QtGui.QMessageBox.information(self, "Warning!", "Solver is still running!", QtGui.QMessageBox.Ok)
         selected = self.solutionList.currentIndex().row()
         if selected < len(self.problem.solutions):
-            _, solution = self.problem.solutions[selected]
+            solution = self.problem.solutions[selected]['trip']
             self.draw_solution(solution)
 
     def run_tsp(self):
@@ -291,18 +291,20 @@ class Ui_Tsp(QtGui.QWidget):
 
     def done(self):
         self.runtimeText.setText(str(self.problem.runtime))
-        self.iterText.setText(str(self.problem.iterations))
-        self.infoText.setText("Trip-Distance: " + str(self.problem.trip_distance))
+        self.iterText.setText(str(self.problem.iterations) + " (best at " + str(self.problem.best_solution['iteration']) + ")")
+        self.infoText.setText("Trip-Distance: " + str(self.problem.best_solution['distance']))
         self.write_list(self.problem.solutions)
-        self.draw_solution(self.problem.best_solution)
+        self.draw_solution(self.problem.best_solution['trip'])
 
     def draw_solution(self, tsp_solution):
+        edges = [(tsp_solution[i], tsp_solution[i+1]) for i in range(0, len(tsp_solution)-1)]
+        edges.append((tsp_solution[len(tsp_solution)-1], tsp_solution[0]))
+
         ax = self.figure.add_subplot(111)
         ax.hold(False)
-
         G = nx.DiGraph()
         G.add_nodes_from(range(0, len(self.problem.data)))
-        G.add_edges_from(tsp_solution)
+        G.add_edges_from(edges)
         nx.draw_networkx_nodes(G, self.problem.data, node_size=20, node_color='k')
         nx.draw_networkx_edges(G, self.problem.data, width=0.5, arrows=True, edge_color='r')
 
@@ -319,24 +321,14 @@ class Ui_Tsp(QtGui.QWidget):
         self.solutionList.clear()
         gold = QtGui.QBrush(QtGui.QColor(255, 191, 0))
         gold.setStyle(QtCore.Qt.SolidPattern)
-        red = QtGui.QBrush(QtGui.QColor(255, 0, 0))
-        red.setStyle(QtCore.Qt.SolidPattern)
-        green = QtGui.QBrush(QtGui.QColor(85, 255, 0))
-        green.setStyle(QtCore.Qt.SolidPattern)
 
         for i in range(0, len(solutions)):
             item = QtGui.QListWidgetItem()
-            distance, _ = solutions[i]
+            distance = solutions[i]['distance']
             item.setText("{0}:  {1}".format(str(i+1), str(distance)))
             if i > 0:
-                if distance == self.problem.best_solution:
+                if distance == self.problem.best_solution['distance']:
                     item.setBackground(gold)
-                else:
-                    prev_distance, _ = solutions[i-1]
-                    if prev_distance > distance:
-                        item.setBackground(red)
-                    if prev_distance < distance:
-                        item.setBackground(green)
 
             self.solutionList.addItem(item)
 
