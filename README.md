@@ -9,7 +9,7 @@
 * Python 2.7.10
 
 GUI:
-![alt tag](https://github.com/fritziF/Python-TSP-Heuristic/blob/master/gui_tsp-ILS.PNG)
+![alt tag](https://github.com/fritziF/Python-TSP-Heuristic/blob/master/gui_ILS.PNG)
 
 # Source of Problems
 
