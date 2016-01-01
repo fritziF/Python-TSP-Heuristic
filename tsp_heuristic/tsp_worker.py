@@ -45,7 +45,7 @@ class Problem(QThread):
         self.logfile = os.path.join(ROOT_DIR, 'log', self.meta['name'] + '.csv')
         if not os.path.isfile(self.logfile):
             with open(self.logfile, 'w') as f:
-                f.write("timestamp;runtime;iterations;best-iteration;tour-distance;iteration-limit;idle-limit;figure\n")
+                f.write("timestamp;total-runtime;runtime-til-best;iterations;best-iteration;tour-distance;iteration-limit;idle-limit;figure\n")
 
     def reset(self):
         self.iterations = 0
@@ -76,23 +76,6 @@ class Problem(QThread):
         z = numpy.array([[complex(x, y) for x, y in self.data]])
         return numpy.round(abs(z.T - z), NUMPY_PRECISION)
 
-    # def greedy_tsp(self, distance_matrix):
-    #    unvisited = range(1, len(self.data))
-    #    current_node = 0
-    #    trip = []
-    #    distance_list = []
-    #    trip.append(current_node)
-    #    while unvisited:
-    #        min_unvisited = numpy.argmin([distance_matrix[current_node][i] for i in unvisited])
-    #        next_node = unvisited[min_unvisited]
-    #        unvisited.remove(next_node)
-    #        trip.append(next_node)
-    #        distance_list.append(distance_matrix[current_node, next_node])
-    #        current_node = next_node
-    #    trip.append(0)
-    #    distance_list.append(distance_matrix[current_node, 0])
-    #    return trip, distance_list
-
     def run(self):
         if not numpy.any(self.dist_matrix):
             self.dist_matrix = self.calc_dist_matrix()
@@ -100,7 +83,7 @@ class Problem(QThread):
         self.reset()
 
         start = datetime.now()
-        self.best_solution = self.iterated_local_search(self.iteration_limit, self.idle_limit)
+        self.best_solution = self.iterated_local_search(self.iteration_limit, self.idle_limit, start)
         self.runtime = datetime.now() - start
 
         self.log_run(start)
@@ -111,6 +94,7 @@ class Problem(QThread):
         with open(self.logfile, 'a') as f:
             f.write(";".join([str(start),
                               str(self.runtime),
+                              str(self.best_solution['runtime']),
                               str(self.iterations),
                               str(self.best_solution['iteration']),
                               str(self.best_solution['distance']),
@@ -118,7 +102,7 @@ class Problem(QThread):
                               str(self.idle_limit),
                               os.path.basename(self.img)]) + '\n')
 
-    def iterated_local_search(self, iteration_limit, idle_limit):
+    def iterated_local_search(self, iteration_limit, idle_limit, start_timestamp):
         """Source: Algorithm3 from http://www.scielo.br/scielo.php?script=sci_arttext&pid=S2238-10312014000400010"""
         solution = {'tour': [], 'distance': 0, 'iteration': 0}
         # initial solution starting at 0
@@ -132,9 +116,10 @@ class Problem(QThread):
         for i in range(1, iteration_limit):
             new_solution = self.perturbation(solution)
             new_solution = self.local_search(new_solution, idle_limit)
-            new_solution['iteration'] = i + 1
             if new_solution['distance'] < solution['distance']:
                 solution = new_solution
+                solution['iteration'] = i + 1
+                solution['runtime'] = datetime.now() - start_timestamp
             self.solutions.append(new_solution)
             self.iterations += 1
         return solution
