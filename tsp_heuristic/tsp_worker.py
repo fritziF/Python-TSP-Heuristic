@@ -13,11 +13,22 @@ numpy.set_printoptions(precision=NUMPY_PRECISION)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
+def randomize_tour(length):
+    tour = []
+    tour.append(0)
+    random_tour = range(1, length)
+    random.shuffle(random_tour)
+    tour += random_tour
+    return tour
+
+
 class Problem(QThread):
     def __init__(self, file_path):
         QThread.__init__(self)
         self.meta = OrderedDict()
         self.data = []
+        self.iteration_limit = 200
+        self.idle_limit = 50
 
         self.dist_matrix = None
         self.iterations = 0
@@ -34,7 +45,7 @@ class Problem(QThread):
         self.logfile = os.path.join(ROOT_DIR, 'log', self.meta['name'] + '.csv')
         if not os.path.isfile(self.logfile):
             with open(self.logfile, 'w') as f:
-                f.write("timestamp;runtime;iterations;best-iteration;trip-distance;figure\n")
+                f.write("timestamp;runtime;iterations;best-iteration;tour-distance;iteration-limit;idle-limit;figure\n")
 
     def reset(self):
         self.iterations = 0
@@ -57,11 +68,15 @@ class Problem(QThread):
             self.data.append((float(match.group(1).strip()),
                               float(match.group(2).strip())))
 
+    def setParameters(self, iteration_limit, idle_limit):
+        self.iteration_limit = iteration_limit
+        self.idle_limit = idle_limit
+
     def calc_dist_matrix(self):
         z = numpy.array([[complex(x, y) for x, y in self.data]])
         return numpy.round(abs(z.T - z), NUMPY_PRECISION)
 
-    #def greedy_tsp(self, distance_matrix):
+    # def greedy_tsp(self, distance_matrix):
     #    unvisited = range(1, len(self.data))
     #    current_node = 0
     #    trip = []
@@ -85,7 +100,7 @@ class Problem(QThread):
         self.reset()
 
         start = datetime.now()
-        self.best_solution = self.iterated_local_search()
+        self.best_solution = self.iterated_local_search(self.iteration_limit, self.idle_limit)
         self.runtime = datetime.now() - start
 
         self.log_run(start)
@@ -99,16 +114,16 @@ class Problem(QThread):
                               str(self.iterations),
                               str(self.best_solution['iteration']),
                               str(self.best_solution['distance']),
+                              str(self.iteration_limit),
+                              str(self.idle_limit),
                               os.path.basename(self.img)]) + '\n')
 
-    def iterated_local_search(self, iteration_limit=1500, idle_limit=50):
-        solution = {'trip': [], 'distance': 0, 'iteration': 0}
-        #initial solution starting at 0
-        solution['trip'].append(0)
-        random_trip = range(1, len(self.data))
-        random.shuffle(random_trip)
-        solution['trip'] += random_trip
-        solution['distance'] = self.calculate_trip_distance(solution['trip'])
+    def iterated_local_search(self, iteration_limit, idle_limit):
+        """Source: Algorithm3 from http://www.scielo.br/scielo.php?script=sci_arttext&pid=S2238-10312014000400010"""
+        solution = {'tour': [], 'distance': 0, 'iteration': 0}
+        # initial solution starting at 0
+        solution['tour'] = randomize_tour(len(self.data))
+        solution['distance'] = self.calculate_tour_distance(solution['tour'])
         solution = self.local_search(solution, idle_limit)
         solution['iteration'] = 1
         self.solutions.append(solution)
@@ -124,10 +139,10 @@ class Problem(QThread):
             self.iterations += 1
         return solution
 
-    def calculate_trip_distance(self, solution):
+    def calculate_tour_distance(self, solution):
         # create all edges as tuples beginning at 0 and ending at 0
-        edges = [(solution[i], solution[i+1]) for i in range(0, len(solution)-1)]
-        edges.append((solution[len(solution)-1], solution[0]))
+        edges = [(solution[i], solution[i + 1]) for i in range(0, len(solution) - 1)]
+        edges.append((solution[len(solution) - 1], solution[0]))
         distance = 0
         for a, b in edges:
             distance += self.dist_matrix[a, b]
@@ -136,49 +151,51 @@ class Problem(QThread):
     def local_search(self, solution, idle_limit):
         idle_counter = 0
         while idle_counter < idle_limit:
-            trip = self.stochastic_two_opt(solution['trip'])
-            distance = self.calculate_trip_distance(trip)
+            tour = self.stochastic_two_opt(solution['tour'])
+            distance = self.calculate_tour_distance(tour)
             if distance < solution['distance']:
                 idle_counter = 0
-                solution['trip'] = trip
+                solution['tour'] = tour
                 solution['distance'] = distance
             else:
                 idle_counter += 1
         return solution
 
-    def stochastic_two_opt(self, trip):
-        trip = trip[:]
-        c1 = random.randint(0, len(trip))
-        c2 = random.randint(0, len(trip))
+    def stochastic_two_opt(self, tour):
+        """Source: https://github.com/jbrownlee/CleverAlgorithms/blob/master/src/algorithms/stochastic/variable_neighborhood_search.rb"""
+        tour = tour[:]
+        c1 = random.randint(0, len(tour))
+        c2 = random.randint(0, len(tour))
         exclude = [c1]
         if c1 == 0:
-            exclude.append( len(trip) - 1)
+            exclude.append(len(tour) - 1)
         else:
-            exclude.append( c1 - 1)
-
-        if c2 == len(trip) - 1:
-            exclude.append( 0)
+            exclude.append(c1 - 1)
+        if c2 == len(tour) - 1:
+            exclude.append(0)
         else:
-            exclude.append( c1 + 1 )
+            exclude.append(c1 + 1)
 
         while c2 in exclude:
-            c2 = random.randint(0, len(trip))
+            c2 = random.randint(0, len(tour))
 
         c1, c2 = [c2, c1] if c2 < c1 else [c1, c2]
-        c1c2_rev = trip[c1:c2]
-        c1c2_rev.reverse()
-        trip[c1:c2] = c1c2_rev
-        trip.reverse()
-        return trip
+        rev = tour[c1:c2]
+        rev.reverse()
+        tour[c1:c2] = rev
+        tour.reverse()
+        return tour
 
     def perturbation(self, solution):
         new_solution = {}
-        new_solution['trip'] = self.double_bridge_move(solution['trip'])
-        new_solution['distance'] = self.calculate_trip_distance(new_solution['trip'])
+        new_solution['tour'] = self.double_bridge_move(solution['tour'])
+        new_solution['distance'] = self.calculate_tour_distance(new_solution['tour'])
         return new_solution
 
-    def double_bridge_move(self, trip):
-        first_pos = 1 + random.randint(0, len(trip)/4)
-        second_pos = first_pos + 1 + random.randint(0, len(trip)/4)
-        third_pos = second_pos + 1 + random.randint(0, len(trip)/4)
-        return trip[0:first_pos] + trip[third_pos:] + trip[second_pos:third_pos] + trip[first_pos:second_pos]
+    def double_bridge_move(self, tour):
+        """4-Opt double bridge move Source:
+        https://www.comp.nus.edu.sg/~stevenha/database/viz/TSP_ILS.cpp"""
+        pos1 = 1 + random.randint(0, len(tour) / 4)
+        pos2 = pos1 + 1 + random.randint(0, len(tour) / 4)
+        pos3 = pos2 + 1 + random.randint(0, len(tour) / 4)
+        return tour[0:pos1] + tour[pos3:] + tour[pos2:pos3] + tour[pos1:pos2]
