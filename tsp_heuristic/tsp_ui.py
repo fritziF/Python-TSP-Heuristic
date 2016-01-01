@@ -301,8 +301,7 @@ class Ui_Tsp(QtGui.QWidget):
         self.draw_solution(self.problem.best_solution['tour'])
 
     def draw_solution(self, tour):
-        edges = [(tour[i], tour[i+1]) for i in range(0, len(tour)-1)]
-        edges.append((tour[len(tour)-1], tour[0]))
+        edges = self.problem.get_edge_list(tour)
 
         ax = self.figure.add_subplot(111)
         ax.hold(False)

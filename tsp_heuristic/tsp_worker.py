@@ -139,10 +139,14 @@ class Problem(QThread):
             self.iterations += 1
         return solution
 
-    def calculate_tour_distance(self, solution):
+    def get_edge_list(self, tour):
         # create all edges as tuples beginning at 0 and ending at 0
-        edges = [(solution[i], solution[i + 1]) for i in range(0, len(solution) - 1)]
-        edges.append((solution[len(solution) - 1], solution[0]))
+        edges = [(tour[i], tour[i + 1]) for i in range(0, len(tour) - 1)]
+        edges.append((tour[len(tour) - 1], tour[0]))
+        return edges
+
+    def calculate_tour_distance(self, tour):
+        edges = self.get_edge_list(tour)
         distance = 0
         for a, b in edges:
             distance += self.dist_matrix[a, b]
