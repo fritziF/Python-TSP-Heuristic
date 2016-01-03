@@ -151,7 +151,8 @@ class Problem(QThread):
         return solution
 
     def stochastic_two_opt(self, tour):
-        """Source: https://github.com/jbrownlee/CleverAlgorithms/blob/master/src/algorithms/stochastic/variable_neighborhood_search.rb"""
+        """Delete 2 Edges and reverse everything between them
+        Source: http://www.cleveralgorithms.com/nature-inspired/stochastic/iterated_local_search.html"""
         tour = tour[:]
         c1 = random.randint(0, len(tour))
         c2 = random.randint(0, len(tour))
@@ -168,7 +169,9 @@ class Problem(QThread):
         while c2 in exclude:
             c2 = random.randint(0, len(tour))
 
-        c1, c2 = [c2, c1] if c2 < c1 else [c1, c2]
+        # make sure c1 < c2
+        if c2 < c1:
+            c1, c2 = c2, c1
         rev = tour[c1:c2]
         rev.reverse()
         tour[c1:c2] = rev
@@ -182,8 +185,9 @@ class Problem(QThread):
         return new_solution
 
     def double_bridge_move(self, tour):
-        """4-Opt double bridge move Source:
-        https://www.comp.nus.edu.sg/~stevenha/database/viz/TSP_ILS.cpp"""
+        """Split tour in 4 and reorder them.
+        (a,b,c,d) --> (a,d,c,b)
+        Source: https://www.comp.nus.edu.sg/~stevenha/database/viz/TSP_ILS.cpp"""
         pos1 = 1 + random.randint(0, len(tour) / 4)
         pos2 = pos1 + 1 + random.randint(0, len(tour) / 4)
         pos3 = pos2 + 1 + random.randint(0, len(tour) / 4)
