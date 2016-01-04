@@ -6,7 +6,7 @@ import random
 from collections import OrderedDict
 import numpy
 from datetime import datetime
-from PyQt4.QtCore import QThread, SIGNAL
+from PyQt4.QtCore import QThread
 
 NUMPY_PRECISION = 2
 numpy.set_printoptions(precision=NUMPY_PRECISION)
@@ -110,6 +110,7 @@ class Problem(QThread):
         solution['distance'] = self.calculate_tour_distance(solution['tour'])
         solution = self.local_search(solution, idle_limit)
         solution['iteration'] = 1
+        solution['runtime'] = datetime.now() - start_timestamp
         self.solutions.append(solution)
         self.iterations += 1
 
