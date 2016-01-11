@@ -29,6 +29,7 @@ class Problem(QThread):
         self.meta = OrderedDict()
         self.data = []
         self.iteration_limit = 200
+        self.alternative = False
         self.idle_limit = 50
 
         self.dist_matrix = None
@@ -69,9 +70,10 @@ class Problem(QThread):
             self.data.append((float(match.group(1).strip()),
                               float(match.group(2).strip())))
 
-    def setParameters(self, iteration_limit, idle_limit):
+    def setParameters(self, iteration_limit, alternative, idle_limit):
         self.iteration_limit = iteration_limit
         self.idle_limit = idle_limit
+        self.alternative = alternative
 
     def calc_dist_matrix(self):
         z = numpy.array([[complex(x, y) for x, y in self.data]])
@@ -109,7 +111,8 @@ class Problem(QThread):
         # initial solution starting at 0
         solution['tour'] = randomize_tour(len(self.data))
         solution['distance'] = self.calculate_tour_distance(solution['tour'])
-        solution = self.local_search(solution, idle_limit)
+
+        solution = self.local_search_wrapper(solution)
         solution['iteration'] = 1
         solution['runtime'] = datetime.now() - start_timestamp
         self.solutions.append(solution)
@@ -117,7 +120,7 @@ class Problem(QThread):
 
         for i in range(1, iteration_limit):
             new_solution = self.perturbation(solution)
-            new_solution = self.local_search(new_solution, idle_limit)
+            new_solution = self.local_search_wrapper(new_solution)
             if new_solution['distance'] < solution['distance']:
                 solution = new_solution
                 solution['iteration'] = i + 1
@@ -139,19 +142,31 @@ class Problem(QThread):
             distance += self.dist_matrix[a, b]
         return distance
 
-    def local_search(self, solution, idle_limit):
+    def local_search_wrapper(self, solution):
+        """this wrapper is used to change local search mode"""
+        if not self.alternative:
+            return self.local_search(solution)
+        else:
+            return self.local_search_alt(solution, self.idle_limit)
+
+    def local_search(self, solution):
+        local_opt = solution
+        for a, b in combinations(range(len(solution['tour'])), 2):
+            if abs(a-b) in (1, len(solution['tour'])-1):
+                continue
+            tour = self.stochastic_two_opt(solution['tour'], a, b)
+            distance = self.calculate_tour_distance(tour)
+            if distance < local_opt['distance']:
+                local_opt['tour'] = tour
+                local_opt['distance'] = distance
+
+        return local_opt
+
+    def local_search_alt(self, solution, idle_limit):
         idle_counter = 0
 
-        tour = solution['tour']
-
-        #for a, b in combinations(range(len(solution['tour'])), 2):
-        #    if abs(a-b) in (1, len(solution['tour'])-1):
-        #        continue
-
-        #    tour = self.stochastic_two_opt_cp(solution['tour'], a, b)
-
         while idle_counter < idle_limit:
-            tour = self.stochastic_two_opt(solution['tour'])
+            tour = self.stochastic_two_opt_random(solution['tour'])
             distance = self.calculate_tour_distance(tour)
             if distance < solution['distance']:
                 idle_counter = 0
@@ -161,9 +176,21 @@ class Problem(QThread):
                 idle_counter += 1
         return solution
 
-    def stochastic_two_opt(self, tour):
+    def stochastic_two_opt(self, tour, c1, c2):
         """Delete 2 Edges and reverse everything between them
         Source: http://www.cleveralgorithms.com/nature-inspired/stochastic/iterated_local_search.html"""
+        tour = tour[:]
+        # make sure c1 < c2
+        if c2 < c1:
+            c1, c2 = c2, c1
+        rev = tour[c1:c2]
+        rev.reverse()
+        tour[c1:c2] = rev
+        tour.reverse()
+        return tour
+
+    def stochastic_two_opt_random(self, tour):
+        """2-opt by randomly selecting 2 points"""
         tour = tour[:]
         c1 = random.randint(0, len(tour))
         c2 = random.randint(0, len(tour))
@@ -189,20 +216,6 @@ class Problem(QThread):
         tour.reverse()
         return tour
 
-    def stochastic_two_opt_cp(self, tour, c1, c2):
-        """Delete 2 Edges and reverse everything between them
-        Source: http://www.cleveralgorithms.com/nature-inspired/stochastic/iterated_local_search.html"""
-        tour = tour[:]
-
-        # make sure c1 < c2
-        if c2 < c1:
-            c1, c2 = c2, c1
-        rev = tour[c1:c2]
-        rev.reverse()
-        tour[c1:c2] = rev
-        tour.reverse()
-        return tour
-
     def perturbation(self, solution):
         new_solution = {}
         new_solution['tour'] = self.double_bridge_move(solution['tour'])
@@ -216,5 +229,4 @@ class Problem(QThread):
         pos1 = 1 + random.randint(0, len(tour) / 4)
         pos2 = pos1 + 1 + random.randint(0, len(tour) / 4)
         pos3 = pos2 + 1 + random.randint(0, len(tour) / 4)
-        print "{0}, {1}, {2}".format(pos1,pos2,pos3)
         return tour[0:pos1] + tour[pos3:] + tour[pos2:pos3] + tour[pos1:pos2]
