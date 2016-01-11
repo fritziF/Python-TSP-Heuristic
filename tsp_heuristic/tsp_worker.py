@@ -5,6 +5,7 @@ import re
 import random
 from collections import OrderedDict
 import numpy
+from itertools import combinations
 from datetime import datetime
 from PyQt4.QtCore import QThread
 
@@ -140,6 +141,15 @@ class Problem(QThread):
 
     def local_search(self, solution, idle_limit):
         idle_counter = 0
+
+        tour = solution['tour']
+
+        #for a, b in combinations(range(len(solution['tour'])), 2):
+        #    if abs(a-b) in (1, len(solution['tour'])-1):
+        #        continue
+
+        #    tour = self.stochastic_two_opt_cp(solution['tour'], a, b)
+
         while idle_counter < idle_limit:
             tour = self.stochastic_two_opt(solution['tour'])
             distance = self.calculate_tour_distance(tour)
@@ -179,6 +189,20 @@ class Problem(QThread):
         tour.reverse()
         return tour
 
+    def stochastic_two_opt_cp(self, tour, c1, c2):
+        """Delete 2 Edges and reverse everything between them
+        Source: http://www.cleveralgorithms.com/nature-inspired/stochastic/iterated_local_search.html"""
+        tour = tour[:]
+
+        # make sure c1 < c2
+        if c2 < c1:
+            c1, c2 = c2, c1
+        rev = tour[c1:c2]
+        rev.reverse()
+        tour[c1:c2] = rev
+        tour.reverse()
+        return tour
+
     def perturbation(self, solution):
         new_solution = {}
         new_solution['tour'] = self.double_bridge_move(solution['tour'])
@@ -192,4 +216,5 @@ class Problem(QThread):
         pos1 = 1 + random.randint(0, len(tour) / 4)
         pos2 = pos1 + 1 + random.randint(0, len(tour) / 4)
         pos3 = pos2 + 1 + random.randint(0, len(tour) / 4)
+        print "{0}, {1}, {2}".format(pos1,pos2,pos3)
         return tour[0:pos1] + tour[pos3:] + tour[pos2:pos3] + tour[pos1:pos2]
