@@ -47,7 +47,7 @@ class Problem(QThread):
         self.logfile = os.path.join(ROOT_DIR, 'log', self.meta['name'] + '.csv')
         if not os.path.isfile(self.logfile):
             with open(self.logfile, 'w') as f:
-                f.write("timestamp;total-runtime;runtime-til-best;iterations;best-iteration;tour-distance;iteration-limit;idle-limit;figure\n")
+                f.write("timestamp;total-runtime;runtime-til-best;iterations;best-iteration;tour-distance;iteration-limit;use-no-improve;idle-limit;figure\n")
 
     def reset(self):
         self.iterations = 0
@@ -92,8 +92,12 @@ class Problem(QThread):
         self.log_run(start)
 
     def log_run(self, start):
-        self.img = os.path.join(ROOT_DIR, 'log', 'figures', "{0}_{1}_{2}.png".format(
-                self.meta['name'], str(self.best_solution['distance']), str(self.best_solution['iteration'] + 1)))
+        alt_suffix = '' if not self.alternative else 'alt_'
+        self.img = os.path.join(ROOT_DIR, 'log', 'figures', "{0}_{1}{2}_{3}.png".format(
+                self.meta['name'],
+                alt_suffix,
+                str(self.best_solution['distance']),
+                str(self.best_solution['iteration'] + 1)))
         with open(self.logfile, 'a') as f:
             f.write(";".join([str(start),
                               str(self.runtime),
@@ -102,6 +106,7 @@ class Problem(QThread):
                               str(self.best_solution['iteration']),
                               str(self.best_solution['distance']),
                               str(self.iteration_limit),
+                              str(self.alternative),
                               str(self.idle_limit),
                               os.path.basename(self.img)]) + '\n')
 
