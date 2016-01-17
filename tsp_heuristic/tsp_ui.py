@@ -272,6 +272,7 @@ class Ui_Tsp(QtGui.QWidget):
             try:
                 self.problem = Problem(file_path)
                 self.connect(self.problem, SIGNAL("finished()"), self.done)
+                self.connect(self.problem, SIGNAL("iter"), self.update_info)
                 self.infoText.setText("ready...")
             except Exception as e:
                 print e
@@ -304,6 +305,10 @@ class Ui_Tsp(QtGui.QWidget):
             self.draw_solution(self.problem.best_solution['tour'])
         except:
             self.infoText.setText("Error occured while running... :(")
+
+    def update_info(self, iterations):
+        self.infoText.setText("Solving TSP '{0}': {1}/{2}".format(self.problem.meta['name'], iterations, self.problem.iteration_limit))
+        self.infoText.repaint()
 
     def draw_solution(self, tour):
         edges = self.problem.get_edge_list(tour)

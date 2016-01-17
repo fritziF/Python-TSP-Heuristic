@@ -7,7 +7,7 @@ from collections import OrderedDict
 import numpy
 from itertools import combinations
 from datetime import datetime
-from PyQt4.QtCore import QThread
+from PyQt4.QtCore import QThread, pyqtSignal, QObject, SIGNAL
 
 NUMPY_PRECISION = 2
 numpy.set_printoptions(precision=NUMPY_PRECISION)
@@ -23,9 +23,9 @@ def randomize_tour(length):
     return tour
 
 
-class Problem(QThread):
+class Problem(QThread, QObject):
     def __init__(self, file_path):
-        QThread.__init__(self)
+        super(Problem, self).__init__()
         self.meta = OrderedDict()
         self.data = []
         self.iteration_limit = 200
@@ -37,6 +37,7 @@ class Problem(QThread):
         self.runtime = ""
         self.solutions = []
         self.best_solution = {}
+        self.alternative_counter = []
 
         with open(file_path, 'r') as f:
             file_content = f.readlines()
@@ -54,6 +55,7 @@ class Problem(QThread):
         self.runtime = ""
         self.solutions = []
         self.best_solution = {}
+        self.alternative_counter = []
 
     def read_meta(self, file_content):
         meta_reg = re.compile(r"(.*):(.*)")
@@ -92,6 +94,8 @@ class Problem(QThread):
         self.log_run(start)
 
     def log_run(self, start):
+        if self.alternative:
+            print sum(self.alternative_counter)/len(self.alternative_counter)
         alt_suffix = '' if not self.alternative else 'alt_'
         self.img = os.path.join(ROOT_DIR, 'log', 'figures', "{0}_{1}{2}_{3}.png".format(
                 self.meta['name'],
@@ -124,6 +128,7 @@ class Problem(QThread):
         self.iterations += 1
 
         for i in range(1, iteration_limit):
+            self.emit(SIGNAL("iter"), self.iterations)
             new_solution = self.perturbation(solution)
             new_solution = self.local_search_wrapper(new_solution)
             if new_solution['distance'] < solution['distance']:
@@ -164,11 +169,11 @@ class Problem(QThread):
             if distance < local_opt['distance']:
                 local_opt['tour'] = tour
                 local_opt['distance'] = distance
-
         return local_opt
 
     def local_search_alt(self, solution, idle_limit):
         idle_counter = 0
+        total_counter = 0
 
         while idle_counter < idle_limit:
             tour = self.stochastic_two_opt_random(solution['tour'])
@@ -179,6 +184,8 @@ class Problem(QThread):
                 solution['distance'] = distance
             else:
                 idle_counter += 1
+            total_counter += 1
+        self.alternative_counter.append(total_counter)
         return solution
 
     def stochastic_two_opt(self, tour, c1, c2):
