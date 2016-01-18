@@ -198,7 +198,6 @@ class Problem(QThread, QObject):
         rev = tour[c1:c2]
         rev.reverse()
         tour[c1:c2] = rev
-        tour.reverse()
         return tour
 
     def stochastic_two_opt_random(self, tour):
@@ -225,7 +224,6 @@ class Problem(QThread, QObject):
         rev = tour[c1:c2]
         rev.reverse()
         tour[c1:c2] = rev
-        tour.reverse()
         return tour
 
     def perturbation(self, solution):
